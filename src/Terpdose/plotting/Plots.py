@@ -3,7 +3,22 @@ from __future__ import annotations
 # POSSIBLE PLAN --- Make these functions accept mesh, array, geo,
 # then they figure out how to actually plot.
 # Or just make a 1D plot 2D plot etc.
-# Could still have wrapper functions that 
+# Could still have wrapper functions that
+
+def pretty_patties ():
+    
+    """ Gives a color scheme for curves, as a list of hex values.
+    """
+    
+    return [
+        '#009cde', # Lionbolt blue
+        '#585858', # NittanyPhysics gray
+        '#07c100', # OpenRPS green
+        '#363636', # NittanyPhysics deep gray
+        '#004e6f', # Lionbolt deep blue
+        '#004436', # OpenRPS deep green
+        '#52ccff', # Lionbolt light blue
+    ]
 
 def pretty_fig (fig, ax):
     
@@ -38,7 +53,7 @@ def pretty_fig (fig, ax):
     
     return fig, ax
 
-def plot_1D (mesh, geo : Line, array, title=None, xlabel=r'$d$ (cm)', ylabel=None, color='blue', pretty=True):
+def plot_1D (mesh, geo : Line, array, title=None, xlabel=r'$d$ (cm)', ylabel=None, color='blue', pretty=True, dots=False):
     
     """ Plots on a 1D geometry given by geo.
     
@@ -60,7 +75,9 @@ def plot_1D (mesh, geo : Line, array, title=None, xlabel=r'$d$ (cm)', ylabel=Non
         Whether or not to format the figures in a particular 'pretty' way. 
         By default, this is done, but if a user wishes to use this function to, e.g.,
         plot multiple curves, they may wish to turn this OFF and then apply it themselves
-        at the very end by sending fig and ax to the function pretty_fig (fig, ax)
+        at the very end by sending fig and ax to the function pretty_fig (fig, ax).
+    dots : boolean, optional
+        Whether or not to use dots on the curve.
     
     Returns
     -------
@@ -78,7 +95,7 @@ def plot_1D (mesh, geo : Line, array, title=None, xlabel=r'$d$ (cm)', ylabel=Non
     matplotlib.use('Agg')
     
     # Enable LaTeX
-    plt.rcParams.update({
+    plt.rcParams.update ({
         'text.usetex' : True,
         'font.family' : 'serif',
         'font.serif'  : ['Computer Modern Roman']
@@ -89,7 +106,12 @@ def plot_1D (mesh, geo : Line, array, title=None, xlabel=r'$d$ (cm)', ylabel=Non
     
     fig, ax = plt.subplots(figsize=(7.1, 4))
     
-    ax.plot (u, y, '-o', markersize=0.5, linewidth=0.75, color=color)
+    if dots:
+        line = '-o'
+    else:
+        line = '-'
+    
+    ax.plot (u, y, line, markersize=0.5, linewidth=1.0, color=color)
     
     if title is not None:
         ax.set_title(title, fontsize=12, pad=10)
@@ -143,7 +165,7 @@ def plot_2D (mesh, geo : Plane, array, title=None, xlabel=r'$x$ (cm)', ylabel=r'
     matplotlib.use('Agg')
     
     # Enable LaTeX
-    plt.rcParams.update({
+    plt.rcParams.update ({
         'text.usetex' : True,
         'font.family' : 'serif',
         'font.serif'  : ['Computer Modern Roman']
@@ -190,7 +212,103 @@ def plot_2D (mesh, geo : Plane, array, title=None, xlabel=r'$x$ (cm)', ylabel=r'
     
     return fig, ax
 
-def plot_slab (mesh : Mesh, array, FMR=False, title=None, xlabel=r'Depth (cm)', ylabel=None, color='blue', pretty=True):
+def plot_2D_vectors (mesh, geo : Plane, array, title=None, xlabel=r'$x$ (cm)', ylabel=r'$y$ (cm)', cblabel=None):
+    
+    """ Plots vectors on a 2D geometry given by geo.
+    
+    Parameters
+    ----------
+    mesh : Mesh
+        The mesh in which to solve.
+    geo : Plane
+        The 2D geometry over which to plot.
+    array : np.float64 [:,:]
+        Set of vectors, indexed like [spatial d.o.f., Cartesian component]
+    title : str, optional
+        Title of the plot. By default, no title is used.
+    xlabel : str, optional
+        x-label of the plot. By default, r'$x$ (cm)'
+    ylabel : str, optional
+        y-label of the plot. By default, r'$y$ (cm)'
+    cblabel : str, optional
+        colorbar label of the plot. By default, no label is used.
+    
+    Returns
+    -------
+    fig : matplotlib.Figure
+        matplotlib figure.
+    ax : matplotlib.Axes
+        matplotlib axes.
+    """
+    
+    import numpy as np
+    import matplotlib
+    import matplotlib.pyplot as plt
+    from Terpdose import Mesh, GeoInterpolation
+    
+    matplotlib.use('Agg')
+    
+    # Enable LaTeX
+    plt.rcParams.update ({
+        'text.usetex' : True,
+        'font.family' : 'serif',
+        'font.serif'  : ['Computer Modern Roman']
+    })
+    
+    U = np.sum((geo.xyz - geo.origin) * geo.bas[:,0], axis=-1)
+    V = np.sum((geo.xyz - geo.origin) * geo.bas[:,1], axis=-1)
+    
+    extent = (U.min(), U.max(), V.min(), V.max())
+    
+    vecs = GeoInterpolation (mesh, geo, array)
+    
+    vmap = np.linalg.norm(vecs, axis=0)
+    
+    v1 = np.einsum('ijk,i->jk', vecs, geo.bas[:,0]) / vmap
+    v2 = np.einsum('ijk,i->jk', vecs, geo.bas[:,1]) / vmap
+    
+    fig, ax = plt.subplots(figsize=(7.1, 4))
+    
+    im = ax.imshow (
+        vmap.T,
+        origin='lower',
+        extent=extent,
+        cmap='jet',
+        interpolation='none',
+        aspect='equal',
+    )
+    
+    # DECIMATING THE GRID FOR QUIVER... you don't want a mess of arrows
+    skip = 25 # Number of vectors to skip... should get a good sense of what is generally best. Probably use size of slice to determine and fix the number of vectors along each dimension instead
+    
+    x = np.linspace(extent[0], extent[1], vmap.shape[0])
+    y = np.linspace(extent[2], extent[3], vmap.shape[1])
+    
+    X, Y = np.meshgrid(x, y)
+    
+    ax.quiver (
+        X   [::skip, ::skip],
+        Y   [::skip, ::skip],
+        v1.T[::skip, ::skip],
+        v2.T[::skip, ::skip],
+        color='white',
+        pivot='mid'
+    )
+    
+    if cblabel is None:
+        fig.colorbar (im, ax=ax)
+    else:
+        fig.colorbar (im, ax=ax, label=cblabel)
+    
+    if title is not None:
+        ax.set_title(title, fontsize=14)
+    ax.set_xlabel(xlabel, fontsize=14)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel, fontsize=14)
+    
+    return fig, ax
+
+def plot_slab (mesh : Mesh, array, FMR=False, title=None, xlabel=r'Depth (cm)', ylabel=None, color='blue', pretty=True, dots=False):
     
     """ Plots on a full slab mesh.
     
@@ -212,7 +330,9 @@ def plot_slab (mesh : Mesh, array, FMR=False, title=None, xlabel=r'Depth (cm)', 
         Whether or not to format the figures in a particular 'pretty' way. 
         By default, this is done, but if a user wishes to use this function to, e.g.,
         plot multiple curves, they may wish to turn this OFF and then apply it themselves
-        at the very end by sending fig and ax to the function pretty_fig (fig, ax)
+        at the very end by sending fig and ax to the function pretty_fig (fig, ax).
+    dots : boolean, optional
+        Whether or not to use dots on the curve.
     
     Returns
     -------
@@ -230,7 +350,7 @@ def plot_slab (mesh : Mesh, array, FMR=False, title=None, xlabel=r'Depth (cm)', 
     matplotlib.use('Agg')
     
     # Enable LaTeX
-    plt.rcParams.update({
+    plt.rcParams.update ({
         'text.usetex' : True,
         'font.family' : 'serif',
         'font.serif'  : ['Computer Modern Roman']
@@ -243,7 +363,12 @@ def plot_slab (mesh : Mesh, array, FMR=False, title=None, xlabel=r'Depth (cm)', 
     
     fig, ax = plt.subplots(figsize=(7.1, 4))
     
-    ax.plot (z, array, '-o', markersize=0.5, linewidth=0.75, color=color)
+    if dots:
+        line = '-o'
+    else:
+        line = '-'
+    
+    ax.plot (z, array, line, markersize=0.5, linewidth=1.0, color=color)
     
     if title is not None:
         ax.set_title(title, fontsize=12, pad=10)
@@ -284,3 +409,109 @@ def plot_slab (mesh : Mesh, array, FMR=False, title=None, xlabel=r'Depth (cm)', 
     # ax.yaxis.set_major_formatter(FuncFormatter(latex_no_trailing_zeros))
     
     return fig, ax
+
+def plot_transparency_mapping_pyvista (mesh : Mesh, arr, cblabel=None, cmap='hot', savelabel='clouds.png', prune=False):
+    
+    """ REQUIRES pyvista PACKAGE! 
+    
+    Plots 3D mesh data using transparency mapping. That is, high values = thick cloud, low values = transparent.
+    
+    Returns an interactive map. Press F2 to screenshot
+    
+    Parameters
+    ----------
+    mesh : Mesh
+        The mesh in which to solve.
+    arr : np.float64 [:]
+        Some quantity defined over spatial d.o.f.
+    cblabel : str, optional
+        Label of the colormap. By default, no label is used.
+    cmap : str, optional
+        Colormap to use, according to matplotlib
+    savelabel : str, optional
+        Name of the screenshot file, when F2 is pressed.
+    prune : boolean, optional
+        Whether or not to take negative values to zero. Further notes on this
+        option are in the source code. By default, this is false.
+    """
+    
+    import numpy as np
+    import matplotlib
+    import matplotlib.pyplot as plt
+    import pyvista as pv
+    from Terpdose import Mesh
+    
+    matplotlib.use('Agg')
+    
+    # Enable LaTeX
+    plt.rcParams.update ({
+        'text.usetex' : True,
+        'font.family' : 'serif',
+        'font.serif'  : ['Computer Modern Roman']
+    })
+    
+    if prune:
+        arr[arr < 0] = 0.0
+    
+    rg = mesh.nodes ()[mesh.connectivity ()]
+    o  = mesh.offset ()
+    NE = mesh.num_elements
+    
+    #  ====================================================
+    #    Set up the Lionbolt mesh in pyvista's mesh class  
+    #  ====================================================
+    # MUST BE GENERALIZED TO MORE THAN TETRAHEDRA
+    
+    cells     = []
+    celltypes = []
+    
+    for e in range(NE):
+        ips = o[e]
+        ipe = o[e + 1]
+        
+        nodes = np.arange (ips, ipe)
+        
+        cells.extend ([4, *nodes])
+        celltypes.append (pv.CellType.TETRA)
+    
+    cells     = np.asarray (cells, dtype=np.int64)
+    celltypes = np.asarray (celltypes)
+    
+    mesh = pv.UnstructuredGrid (cells, celltypes, rg)
+    
+    # Intensity associated with each discontinuous node
+    mesh.point_data[cblabel] = np.asarray(arr)
+    
+    #  ========
+    #    Plot  
+    #  ========
+    
+    p = pv.Plotter(window_size=[1920, 1080])
+    
+    n = 6
+    x = np.linspace(0, 1, n)
+    
+    gamma = 0.9
+    opacity = x**gamma
+    
+    p.add_volume(
+        mesh,
+        scalars=cblabel,
+        cmap=cmap,
+        opacity=opacity,
+    )
+    
+    p.add_axes()
+    
+    def save_screenshot():
+        p.screenshot(savelabel)# , window_size=(1920, 1080)) # , window_size=[1920, 1080])
+        print(f"Terpdose.plot_transparency_mapping_pyvista --- Saved screenshot as '{savelabel}'")
+    
+    p.add_key_event('F2', save_screenshot)
+    
+    print(f"Terpdose.plot_transparency_mapping_pyvista --- Press 'F2' to save a screenshot as '{savelabel}'")
+    print( '                                               (It may take a while depending on the size of your data)')
+    
+    p.show()
+    
+    return

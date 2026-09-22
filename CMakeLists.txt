@@ -31,6 +31,7 @@ SET (TERPDOSE_FORTRAN "_tdfort")
 
 # Directories
 
+# Probably a dumb way of doing this but whatever
 SET (CORE_DIR "${FORTRAN_DIR}/core")
 SET (PP_DIR   "${FORTRAN_DIR}/postprocessing")
 SET (GRID_DIR "${FORTRAN_DIR}/grid")
@@ -41,6 +42,7 @@ SET (FORTRAN_SOURCES
     "${CORE_DIR}/math.f90"
     
     "${PP_DIR}/CalculateFluence.f90"
+    "${PP_DIR}/CalculateCurrent.f90"
     "${PP_DIR}/TallyDeposition.f90"
     
     "${GRID_DIR}/LeafElementMask.f90"

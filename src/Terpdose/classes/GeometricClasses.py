@@ -185,9 +185,9 @@ class Box:
         self.sides  = np.array ([TWO * np.linalg.norm(np.array(ax1)), 
                                  TWO * np.linalg.norm(np.array(ax2)),
                                  TWO * np.linalg.norm(np.array(ax3))])
-        self.bas    = np.column_stack((TWO * ax1 / self.sides[0], 
-                                       TWO * ax2 / self.sides[1], 
-                                       TWO * ax3 / self.sides[2]))
+        self.bas    = np.column_stack((TWO * np.array(ax1) / self.sides[0], 
+                                       TWO * np.array(ax2) / self.sides[1], 
+                                       TWO * np.array(ax3) / self.sides[2]))
         
         self.xyz = self._lattice ()
     

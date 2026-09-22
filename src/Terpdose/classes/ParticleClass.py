@@ -150,10 +150,25 @@ class Particle:
             fl = self._get_polyenergetic_space_vector (GROUP_FL, energies=energies)
         else:
             # If not, calculate it
+            
+            # Determine what datatype energies is
+            if energies == 'all':
+                G      = len(g_keys)
+                g_list = np.arange(G)
+            else:
+                if isinstance(energies, int):
+                    G = 1
+                    g_list = [energies]
+                elif isinstance(energies, list):
+                    if not isinstancelist(energies, int):
+                        raise TypeError ("ParticleClass.py: fluence: 'energies' argument must be either 'all', an integer, or a list of integers.")
+                    G      = len(energies)
+                    g_list = energies
+            
             # We go group-by-group to avoid reading in the entire angular
             # fluence set.
             fl = []
-            for g in energies:
+            for g in g_list:
                 angfl = self.angular_fluence(energies=g)
                 
                 fl.append(angfl.fluence())
@@ -170,7 +185,7 @@ class Particle:
         
         Parameters
         ----------
-        energies : list(int) or int, optional
+        energies : list(int) or int or 'all', optional
             The set of energy indices for which you want to get the angular fluence.
             By default, all are provided.
         
@@ -190,13 +205,28 @@ class Particle:
             fl = self._get_polyenergetic_space_vector (GROUP_FL_UNC, energies=energies)
         else:
             # If not, calculate it
-            # We go group-by-group to avoid reading in the entire angular
-            # fluence set.
+            
+            # Determine what datatype energies is
+            if energies == 'all':
+                G      = len(g_keys)
+                g_list = np.arange(G)
+            else:
+                if isinstance(energies, int):
+                    G = 1
+                    g_list = [energies]
+                elif isinstance(energies, list):
+                    if not isinstancelist(energies, int):
+                        raise TypeError ("ParticleClass.py: uncollided_fluence: 'energies' argument must be either 'all', an integer, or a list of integers.")
+                    G      = len(energies)
+                    g_list = energies
+            
+            # We go group-by-group to avoid writing the angular
+            # fluence set to memory.
             fl = []
-            for g in energies:
+            for g in g_list:
                 angfl = self.uncollided_angular_fluence(energies=g)
                 
-                fl.append(angfl.fluence())
+                fl.append(angfl.fluence ())
             
             # Convert to single np array if only one energy was requested
             if len(energies) == 1:
@@ -204,6 +234,57 @@ class Particle:
         
         return fl
     
+    def fluence_spectrum (self):
+        
+        try:
+            return self._get_dataset (DATASET_FSPEC)
+        except:
+            raise NotImplementedError('Calculation of fluence_spectrum within Terpdose is not yet implemented.') # MHY - must implement
+    
+    def current (self, energies='all'):
+        
+        if GROUP_CURRENT in self.h5:
+            # If it's present, read it
+            # NOTE - _get_polyenergetic_space_vector also works with this even though it's [NDIM, NENK]
+            # Should really rename the function then
+            J = self._get_polyenergetic_space_vector (GROUP_CURRENT, energies=energies) # Comes out as [NENK, NDIM]
+        else:
+            # If not, calculate it
+            
+            # Determine what datatype energies is
+            if energies == 'all':
+                G      = len(g_keys)
+                g_list = np.arange(G)
+            else:
+                if isinstance(energies, int):
+                    G = 1
+                    g_list = [energies]
+                elif isinstance(energies, list):
+                    if not isinstancelist(energies, int):
+                        raise TypeError ("ParticleClass.py: current: 'energies' argument must be either 'all', an integer, or a list of integers.")
+                    G      = len(energies)
+                    g_list = energies
+            
+            # We go group-by-group to avoid reading in the entire angular
+            # fluence set.
+            J = []
+            for g in g_list:
+                angfl = self.angular_fluence(energies=g)
+                
+                J.append(angfl.current ())
+            
+            # Convert to single np array if only one energy was requested
+            if len(energies) == 1:
+                J = J[0]
+        
+        # # TEMPORARY DATA FOR PLOTTING
+        # fl   = np.abs(self.fluence (energies=energies))
+        # khat = self.angular.ordinates ()
+        # 
+        # J = np.outer(fl[:], khat[5,:])
+        
+        return J
+        
     def _get_polyenergetic_space_angle_vector (self, GROUP, energies='all', angles='all'):
         
         # For more general use, creates a list of space-angle vectors (listed over energy) from the 
@@ -280,15 +361,15 @@ class Particle:
         g_keys = [g_keys[g] for g in g_list]
         
         # Now construct the list of space-angle vectors
-        savg = []
+        svg = []
         for g in g_keys:
-            savg.append(np.array(self.h5[f'{GROUP}/{g}']))
+            svg.append(np.array(self.h5[f'{GROUP}/{g}']))
         
         # Pull out of list if energies is just one integer
         if isinstance(energies, int):
-            savg = savg[0]
+            svg = svg[0]
         
-        return savg
+        return svg
     
     def _get_dataset (self, GROUP):
         

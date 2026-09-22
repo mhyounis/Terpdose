@@ -32,6 +32,8 @@ GROUP_FL          = 'fluence'
 GROUP_FL_UNC      = 'uncollided_fluence'
 GROUP_ANG_FL      = 'angular_fluence'
 GROUP_ANG_FL_UNC  = 'uncollided_angular_fluence'
+GROUP_CURRENT     = 'current'
+DATASET_FSPEC     = 'fluence_spectrum'
 
 PATTERN_ENERGY    = 'energy_'
 PATTERN_ANGLE     = 'angle_'

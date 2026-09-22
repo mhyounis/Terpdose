@@ -7,7 +7,7 @@ from Terpdose import *
 
 def main ():
     
-    """ Plot uncollided fluence data from Lionbolt HDF5 files.
+    """ Plot fluence data from Lionbolt HDF5 files.
     
     To make command-line-interface user-friendly, the plot and geometry options are very few.
     However, you are recommended to use this script as a guideline for making more customizable
@@ -44,8 +44,10 @@ def main ():
                         type=str)
     parser.add_argument('-g', '--group', 
                         help="The energy group to be plotted (indexing starts from 1, which has the highest energies). Use 'all' to sum over all groups (default).", 
-                        default='all', 
-                        type=int)
+                        default='all')
+    parser.add_argument('--uncollided', 
+                        help='Plot the uncollided fluence rather than the total fluence.',
+                        action='store_true')
     parser.add_argument('--line-start', 
                         help='Plot along a line (for non-slab calculations). Cannot be given with plane but requires line-end.', 
                         nargs=3,
@@ -64,12 +66,13 @@ def main ():
     args = parser.parse_args ()
     
     # Make assignments
-    h5fname     = args.fname
-    p           = args.particle.lower()
-    g           = args.group
-    x0          = np.array(args.line_start)
-    x1          = np.array(args.line_end)
-    plane       = args.plane
+    h5fname = args.fname
+    p       = args.particle.lower()
+    g       = args.group
+    unc     = args.uncollided
+    x0      = np.array(args.line_start)
+    x1      = np.array(args.line_end)
+    plane   = args.plane
     
     # Determine if there are conflicts
     do_line = args.line_start is not None or args.line_end is not None
@@ -82,9 +85,9 @@ def main ():
     
     do_plane = not do_line
     
-    #  =============================
-    #    Calculate uncollided beam  
-    #  =============================
+    #  =====================
+    #    Calculate fluence  
+    #  =====================
     
     D = Lionbolt (h5fname)
     
@@ -99,22 +102,35 @@ def main ():
     
     if g == 'all':
         try:
-            unc = particle.uncollided_fluence ()
-            unc = sum(unc)
+            if not unc:
+                fl = particle.fluence ()
+            else:
+                fl = particle.uncollided_fluence ()
+            fl = sum(fl)
         except:
-            print(f'Uncollided fluence for particle {p} not found in Lionbolt data file {h5fname}.')
+            if not unc:
+                print(f'Fluence for particle {p} not found in Lionbolt data file {h5fname}.')
+            else:
+                print(f'Uncollided fluence for particle {p} not found in Lionbolt data file {h5fname}.')
     else:
         try:
-            unc = particle.uncollided_fluence (energies=g - 1) # Use fortran indexing for groups
+            if not unc:
+                fl = particle.fluence (energies=int(g) - 1) # Use fortran indexing for user input
+            else:
+                fl = particle.uncollided_fluence (energies=int(g) - 1)
         except:
-            print(f'Uncollided fluence for particle {p} not found in Lionbolt data file {h5fname}.')
+            if not unc:
+                print(f'Fluence for particle {p} not found in Lionbolt data file {h5fname}.')
+            else:
+                print(f'Uncollided fluence for particle {p} not found in Lionbolt data file {h5fname}.')
     
     #  =========================
     #    Determine how to plot  
     #  =========================
-    saveloc =  'uncollided_fluence.png'
-    title   = r'Uncollided Fluence'
-    cblabel = r'Uncollided fluence per inc. fluence'
+    saveloc =  'fluence.png'
+    title   = r'Fluence'
+    cblabel = r'Fluence per inc. fluence'
+    colors  = pretty_patties ()
     
     dmap = D.energy_deposition ()
     prune=True
@@ -157,30 +173,32 @@ def main ():
                 
             # Now use Terpdose to create the geometry and then the plot
             geo = Plane ( n=[500, 500], origin=origin, ax1=ax1, ax2=ax2 )
-            fig, ax = plot_2D (D.mesh, geo, unc,
-                               title=title,
-                               xlabel=xlabel,
-                               ylabel=ylabel,
-                               cblabel=cblabel,
-                               prune=prune)
+            fig, ax = plot_2D (D.mesh, geo, fl,
+                               title   = title,
+                               xlabel  = xlabel,
+                               ylabel  = ylabel,
+                               cblabel = cblabel,
+                               prune   = prune)
         else:
             
             geo = Line ( n=100, x0=x0, x1=x1 )
-            fig, ax = plot_1D (D.mesh, geo, unc,
-                               title=title, 
-                               xlabel=r'Depth (cm)', 
-                               ylabel=cblabel,
-                               pretty=True)
+            fig, ax = plot_1D (D.mesh, geo, fl,
+                               title  = title, 
+                               xlabel = r'Depth (cm)', 
+                               ylabel = cblabel,
+                               color  = colors[0],
+                               pretty = True)
         
     elif problem_type == 'slab':
         
         fig, ax = plot_slab (D.mesh, 
-                             unc, 
-                             FMR=False,
-                             title=title,
-                             xlabel=r'Depth (cm)', 
-                             ylabel=cblabel,
-                             pretty=True)
+                             fl, 
+                             FMR    = False,
+                             title  = title,
+                             xlabel = r'Depth (cm)', 
+                             ylabel = cblabel,
+                             color  = colors[0],
+                             pretty = True)
     
     fig.savefig(saveloc, transparent=False, format='png', bbox_inches='tight', dpi=600)
 

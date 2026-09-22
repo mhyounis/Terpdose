@@ -5,13 +5,13 @@
 Developed by Muhsin H. Younis (myounis@psu.edu / myounis@umd.edu)
 =================================================================
 
----------------------------------------------------------------------------------------
-VERSION: 1.0.0 (Released 8-17-26)                                                      
-   Licensed under the GNU General Public License 3.0.                                  
-   See LICENSE/gpl-3.0.txt or visit https://www.gnu.org/licenses/ for more information.
----------------------------------------------------------------------------------------
+---------------------------------------------------------------------------
+VERSION: 1.1.0 (Released 9-22-26)                                          
+   Licensed under the GNU General Public License 3.0.                      
+   See LICENSE or visit https://www.gnu.org/licenses/ for more information.
+---------------------------------------------------------------------------
 
-Terpdose is a post-processing script for [Lionbolt](https://github.com/mhyounis/Lionbolt) and [NittanyPhysics](https://github.com/mhyounis/NittanyPhysics), programs which are related to deterministic solution of the Boltzmann transport equation for various radiation physics problems.
+Terpdose is a post-processing package for [Lionbolt](https://github.com/mhyounis/Lionbolt) and [NittanyPhysics](https://github.com/mhyounis/NittanyPhysics), codes which are related to deterministic solution of the Boltzmann transport equation for various radiation physics problems.
 
 Part of the [Open Radiation Physics Suite (OpenRPS)](https://mhyounis.github.io/OpenRPS/).
 
@@ -24,7 +24,7 @@ This program, as well as its requirements, can be installed using:
 
   ```pip install Terpdose```
 
-If Terpdose is for whatever reason not accessible to you through PyPI, you can clone the repository from GitHub and install within that directory.
+If Terpdose is for whatever reason not accessible to you through PyPI, you can clone the repository from GitHub and install within that directory using `pip`.
 
 USAGE
 -----

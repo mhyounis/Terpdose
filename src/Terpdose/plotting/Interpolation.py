@@ -21,7 +21,7 @@ def GeoInterpolation (mesh : Mesh, geo : Line | Plane | Box, arr):
         The mesh over which this array is defined.
     geo : GeometricClasses object
         Geometry in which you want to interpolate arr.
-    arr : np.float64 [:]
+    arr : np.float64 [:] or np.float64 [:,:]
         Some quantity defined over spatial d.o.f.
     
     Returns
@@ -33,8 +33,8 @@ def GeoInterpolation (mesh : Mesh, geo : Line | Plane | Box, arr):
     
     grid = Grid (mesh, geo)
     
-    if arr.ndim != 1:
-        raise TypeError ("Interpolation.py: GeoInterpolation: Input array 'arr' must be a 1D numpy array.")
+    if arr.ndim != 1 and arr.ndim != 2:
+        raise TypeError ("Interpolation.py: GeoInterpolation: Input array 'arr' must be a 1D or 2D numpy array.")
     
     o = mesh.offset ()
     
@@ -43,19 +43,44 @@ def GeoInterpolation (mesh : Mesh, geo : Line | Plane | Box, arr):
     
     # Maybe have a logical that checks the shape of element map and mask
     # since they can be carried around either flattened or unflattened
-    
-    # Now interpolate array for each grid point
-    arr_m = FEAInterpolation (o, 
-                              grid.ref_xyz, 
-                              grid.element_map, 
-                              grid.element_mask, 
-                              arr
-                              )
-    
-    # Now unflatten
-    arr_m = arr_m.reshape(ogshape[:-1])
-    
-    # Now mask (and return)
-    mask = grid.element_mask.reshape(ogshape[:-1])
-    
-    return np.ma.array(arr_m, mask=mask)
+    if arr.ndim == 1:
+        # Now interpolate array for each grid point
+        arr_m = FEAInterpolation (o, 
+                grid.ref_xyz, 
+                grid.element_map, 
+                grid.element_mask, 
+                arr
+            )
+        
+        # Now unflatten
+        arr_m = arr_m.reshape(ogshape[:-1])
+        
+        # Now mask (and return)
+        mask = grid.element_mask.reshape(ogshape[:-1])
+        
+        return np.ma.array(arr_m, mask=mask)
+        
+    elif arr.ndim == 2:
+        
+        result = []
+        
+        for iDir in range(arr.shape[1]):
+            arr_slice = arr[:,iDir]
+            
+            arr_m = FEAInterpolation (o, 
+                    grid.ref_xyz, 
+                    grid.element_map, 
+                    grid.element_mask, 
+                    arr_slice
+                )
+            
+            arr_m = arr_m.reshape(ogshape[:-1])
+            mask = grid.element_mask.reshape(ogshape[:-1])
+            
+            masked_slice = np.ma.array(arr_m, mask=mask)
+            result.append(masked_slice)
+        
+        return np.ma.stack (result, axis=0)
+        
+    else:
+        raise ValueError ('Interpolation.py: GeoInterpolation: arr has been given with more than two dimensions')

@@ -63,19 +63,22 @@ def main ():
     deposition_type.add_argument('-C', '--charge', help='Plot charge deposition', action='store_true', default=False)
     
     parser.add_argument('--line-start', 
-                        help='Plot along a line (for non-slab calculations). Cannot be given with plane but requires line-end.', 
+                        help='Plot along a line (for non-slab calculations). Cannot be given with plane nor volume but requires line-end.', 
                         nargs=3,
                         type=float,
                         metavar=('x0', 'y0', 'z0'))
     parser.add_argument('--line-end', 
-                        help='Plot along a line (for non-slab calculations). Cannot be given with plane but requires line-start.', 
+                        help='Plot along a line (for non-slab calculations). Cannot be given with plane nor volume but requires line-start.', 
                         nargs=3,
                         type=float,
                         metavar=('x1', 'y1', 'z1'))
     parser.add_argument('--plane', 
-                        help='Plot along a plane (for non-slab calculations). Cannot be given with line-start nor line-end.', 
+                        help='Plot along a plane (for non-slab calculations). Cannot be given with line-start, line-end, nor volume.', 
                         choices=['XY', 'XZ', 'YZ'], 
                         default=None)
+    parser.add_argument('--volume', 
+                        help='Plot a transparency map in full 3D space. Cannot be given with line-start, line-end, nor plane.', 
+                        action='store_true')
     
     args = parser.parse_args ()
     
@@ -87,17 +90,31 @@ def main ():
     x0          = np.array(args.line_start)
     x1          = np.array(args.line_end)
     plane       = args.plane
+    do_volume   = args.volume
+    
+    if do_volume:
+        try:
+            import pyvista
+        except:
+            raise ModuleNotFoundError ('plot_deposition.py : --volume specified but user does not have pyvista installed.')
     
     # Determine if there are conflicts
-    do_line = args.line_start is not None or args.line_end is not None
-    
-    if do_line:
-        if args.line_start is None or args.line_end is None:
-            parser.error ('--line-start and --line-end must be specified together.')
-        if args.plane is not None:
-            parser.error ('--line-start and --line-end cannot be used with --plane.')
-    
-    do_plane = not do_line
+    if do_volume:
+        do_line  = False
+        do_plane = False
+        
+        if args.line_start is not None or args.line_end is not None or args.plane is not None:
+            parser.error ('--volume specified but user also specified either --line-start, --line-end, or --plane.')
+    else:
+        do_line = args.line_start is not None or args.line_end is not None
+        
+        if do_line:
+            if args.line_start is None or args.line_end is None:
+                parser.error ('--line-start and --line-end must be specified together.')
+            if args.plane is not None:
+                parser.error ('--line-start and --line-end cannot be used with --plane.')
+        
+        do_plane = not do_line
     
     #  ========================
     #    Calculate deposition  
@@ -107,6 +124,9 @@ def main ():
     
     # Set the problem type
     problem_type = D.problem_type
+    
+    if do_volume and problem_type == 'slab':
+        parser.error ('--volume specified but this .h5 file describes a slab solve.')
     
     # Get the deposition requested
     if plot_energy:
@@ -134,6 +154,8 @@ def main ():
     #  =========================
     #    Determine how to plot  
     #  =========================
+    
+    colors = pretty_patties ()
     
     if problem_type == 'general':
         
@@ -174,31 +196,37 @@ def main ():
             # Now use Terpdose to create the geometry and then the plot
             geo = Plane ( n=[500, 500], origin=origin, ax1=ax1, ax2=ax2 )
             fig, ax = plot_2D (D.mesh, geo, dmap,
-                               title=title,
-                               xlabel=xlabel,
-                               ylabel=ylabel,
-                               cblabel=cblabel,
-                               prune=prune)
-        else:
+                               title   = title,
+                               xlabel  = xlabel,
+                               ylabel  = ylabel,
+                               cblabel = cblabel,
+                               prune   = prune)
+        elif do_line:
             
             geo = Line ( n=100, x0=x0, x1=x1 )
             fig, ax = plot_1D (D.mesh, geo, dmap,
-                               title=title, 
-                               xlabel=r'Depth (cm)', 
-                               ylabel=cblabel,
-                               pretty=True)
+                               title  = title, 
+                               xlabel = r'Depth (cm)', 
+                               ylabel = cblabel,
+                               color  = colors[0],
+                               pretty = True)
+        elif do_volume:
+            
+            plot_transparency_mapping_pyvista (D.mesh, dmap, cblabel=cblabel, cmap='hot', savelabel=saveloc, prune=prune)
         
     elif problem_type == 'slab':
         
         fig, ax = plot_slab (D.mesh, 
                              dmap, 
-                             FMR=False,
-                             title=title,
-                             xlabel=r'Depth (cm)', 
-                             ylabel=cblabel,
-                             pretty=True)
+                             FMR    = False,
+                             title  = title,
+                             xlabel = r'Depth (cm)', 
+                             ylabel = cblabel,
+                             color  = colors[0],
+                             pretty = True)
     
-    fig.savefig(saveloc, transparent=False, format='png', bbox_inches='tight', dpi=600)
+    if not do_volume:
+        fig.savefig(saveloc, transparent=False, format='png', bbox_inches='tight', dpi=600)
 
 if __name__ == '__main__':
     main ()

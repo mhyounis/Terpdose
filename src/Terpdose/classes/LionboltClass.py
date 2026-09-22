@@ -72,7 +72,10 @@ class Lionbolt:
         self.problem_type = self._get_problem_type ()
         
         # Initialize mesh
-        self.mesh = Mesh (self.h5[GROUP_MESH])
+        if GROUP_MESH in self.h5.keys():
+            self.mesh = Mesh (self.h5[GROUP_MESH])
+        else:
+            self.mesh = None
         
         # Initialize the XS library
         if GROUP_XSLIBRARY in self.h5.keys():

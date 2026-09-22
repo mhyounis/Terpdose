@@ -281,8 +281,9 @@ class AngularSpace:
         self.h5 = h5
         
         # Initialize some of the attributes
-        self.num_angular_dofs = self.h5.attrs[ATTR_NUMANGLES][()]
-    
+        if ATTR_NUMANGLES in self.h5.attrs:
+            self.num_angular_dofs = self.h5.attrs[ATTR_NUMANGLES][()]
+        
     def weights (self):
         
         """ For SN solves, this gives the quadrature weights.
@@ -297,9 +298,9 @@ class AngularSpace:
         
         return np.array(self.h5[DATASET_ANGWEIGHTS])
     
-    def abscissae (self):
+    def ordinates (self):
         
-        """ For SN solves, this gives the quadrature abscissae.
+        """ For SN solves, this gives the quadrature ordinates.
         
         Returns
         -------
@@ -309,7 +310,7 @@ class AngularSpace:
         
         # LATER ON --- will need to verify that this is SN rather than PN
         
-        return np.array(self.h5[DATASET_ABSCISSAE]).T
+        return np.array(self.h5[DATASET_ABSCISSAE])
     
     def destroy (self):
         
@@ -351,7 +352,7 @@ class EnergyGrid:
     
     def __init__ (self, h5 : h5py.File):    
         
-        if DATASET_EGRID not in h5:
+        if DATASET_EGRID not in h5: # MHY - need to make this type of thing unified. Mesh, AngularSpace, and EnergyGrid all use a different check to do nothing
             return
         
         self.h5 = h5
@@ -496,6 +497,20 @@ class SpaceAngleVector:
         #         arr[g,:] = CalculateFluence (xg.angular.weights(), xg.data)
             
         #     return arr
+    
+    def current (self):
+        
+        """ Gives the particle current corresponding to this space-angle vector
+        
+        Returns
+        -------
+        J : np.float64 [:,:]
+            The current indexed like [spatial d.o.f., direction]
+        """
+        
+        from Terpdose.wrappers.postprocessing.CalculateCurrent import CalculateCurrent
+        
+        return CalculateCurrent (self.angular.weights(), self.angular.ordinates(), self.data)
     
     def destroy (self):
         
